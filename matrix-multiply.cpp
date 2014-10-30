@@ -3,7 +3,7 @@
 #include <QTextStream>
 #include "QStream.h"
 #include <QList>
-#include <QVarLengthArray>
+#include <QVector>
 #include <QPair>
 #include <pthread.h>
 
@@ -13,25 +13,65 @@ struct matrix {
     QString fileName;
 };
 
-QStringList argumentParse(int argc, char *argv[])
+//global variables
+	QList<QList<double> > outputArray;
+	matrix matrix1;
+	matrix matrix2;
+
+QStringList argumentParse(int argc, char *argv[]);
+
+void* readData(void *arg);
+
+int main(int argc, char* argv[])
 {
-	ArgumentList al(argc, argv);
-	al.takeFirst();
-	QStringList argumentList;
-	int i = 0;
-	if(al.isEmpty())
+	QStringList fileList; //a list of the two matrices
+	fileList = argumentParse(argc, argv);
+
+	QPair<int, int> outputMatrix;
+
+	matrix1.fileName = fileList[0];
+	matrix2.fileName = fileList[1];
+
+	qout << matrix1.fileName << endl;
+
+	struct matrix *matrix1ptr = &matrix1;
+	struct matrix *matrix2ptr = &matrix2;
+	pthread_t thread_tid[2];
+	pthread_create(&thread_tid[0], NULL, readData, (void*) matrix1ptr);
+	pthread_create(&thread_tid[1], NULL, readData, (void*) matrix2ptr);
+	pthread_join(thread_tid[0],NULL);
+	pthread_join(thread_tid[1], NULL);
+
+	outputMatrix.first = matrix1.dim.first;
+	outputMatrix.second = matrix2.dim.second;
+
+	pthread_t matrixThread[outputMatrix.first*outputMatrix.second];
+
+	for(int i = 0; i < outputMatrix.first*outputMatrix.second; i++)
 	{
-		qout << "You need to supply two valid files." << endl;
-		exit(0);
+		
 	}
-	else
+	for(int i = 0; i < matrix1.dim.first; i++)
 	{
-		while(!al.isEmpty())
-		{
-			argumentList.append(al.takeFirst());
-		}	
+		QList<double> list;
+		outputArray.append(list);
+		for(int j = 0; j < matrix2.dim.second; j++)
+			outputArray[i].append(0.0);
 	}
-	return argumentList;
+	for (int row = 0; row < outputMatrix.first; row++) {
+        for (int col = 0; col < outputMatrix.second; col++) {
+            // Multiply the row of A by the column of B to get the row, column of product.
+            for (int inner = 0; inner < matrix1.dim.second; inner++) {
+                outputArray[row][col] += matrix1.matrix[row][inner] * matrix2.matrix[inner][col];
+            }
+            qout << outputArray[row][col] << "\t";
+        }
+        qout << endl;
+    }
+
+	qout << matrix1.dim.first << "x" << matrix1.dim.second << endl;
+
+
 }
 
 void* readData(void *arg)
@@ -62,66 +102,23 @@ void* readData(void *arg)
 
 }
 
-
-int main(int argc, char* argv[])
+QStringList argumentParse(int argc, char *argv[])
 {
-	QStringList fileList; //a list of the two matrices
-	fileList = argumentParse(argc, argv);
-
-	matrix matrix1;
-	matrix matrix2;
-	matrix1.fileName = fileList[0];
-	matrix2.fileName = fileList[1];
-
-	qout << matrix1.fileName << endl;
-
-	struct matrix *matrix1ptr = &matrix1;
-	struct matrix *matrix2ptr = &matrix2;
-	pthread_t thread_tid[2];
-	pthread_create(&thread_tid[0], NULL, readData, (void*) matrix1ptr);
-	pthread_create(&thread_tid[1], NULL, readData, (void*) matrix2ptr);
-	pthread_join(thread_tid[0],NULL);
-	pthread_join(thread_tid[1], NULL);
-
-	
-
-	for(int i = 0; i < matrix1.dim.first; i++)
+	ArgumentList al(argc, argv);
+	al.takeFirst();
+	QStringList argumentList;
+	int i = 0;
+	if(al.isEmpty())
 	{
-		for(int j = 0; j < matrix1.dim.second; j++)
-		{
-			qout << matrix1.matrix[i][j]<< "\t";
-		}
-		qout << endl;
+		qout << "You need to supply two valid files." << endl;
+		exit(0);
 	}
-
-	qout << endl;
-
-	for(int i = 0; i < matrix2.dim.first; i++)
+	else
 	{
-		for(int j = 0; j < matrix2.dim.second; j++)
+		while(!al.isEmpty())
 		{
-			qout << matrix2.matrix[i][j]<< "\t";
-		}
-		qout << endl;
+			argumentList.append(al.takeFirst());
+		}	
 	}
-
-	qout << matrix1.dim.first << "x" << matrix1.dim.second << endl;
-
-	//QVarLengthArray<
-
-
-
+	return argumentList;
 }
-
-/*while(!matrixStream1.atEnd()){
-		QString line = matrixStream1.readLine();
-		QStringList tempList  = line.split(rx);
-		QList<double> column;
-		for(int i = 0; i < tempList.size(); i++)
-		{
-			column.append(tempList[i].toDouble());
-		}
-		matrix1.append(column);
-		mDim_1.second = tempList.size();
-		mDim_1.first++;
-	}*/
