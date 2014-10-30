@@ -8,10 +8,9 @@
 #include <pthread.h>
 
 struct matrix {
-    QTextStream matrixStream;
     QList<QList<double> > matrix;
-
-
+    QPair<int, int> dim; //m rows, n columns;
+    QString fileName;
 };
 
 QStringList argumentParse(int argc, char *argv[])
@@ -35,20 +34,32 @@ QStringList argumentParse(int argc, char *argv[])
 	return argumentList;
 }
 
-void *readData(void *List)
+void* readData(void *arg)
 {
-	while(!matrixStream1.atEnd()){
-		QString line = matrixStream1.readLine();
+	QRegExp rx("(\\s|\\s+|\\t)");
+	struct matrix *myMatrix = (struct matrix*)arg;
+	QFile file(myMatrix->fileName);
+	if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		qout << "You did not enter a valid file." << endl;
+		exit(0);
+	}
+
+	QTextStream stream(&file);
+	while(!stream.atEnd()){
+		QString line = stream.readLine();
 		QStringList tempList  = line.split(rx);
 		QList<double> column;
 		for(int i = 0; i < tempList.size(); i++)
 		{
 			column.append(tempList[i].toDouble());
 		}
-		matrix1.append(column);
-		mDim_1.second = tempList.size();
-		mDim_1.first++;
+
+		myMatrix->matrix.append(column);
+		myMatrix->dim.second = tempList.size();
+		(myMatrix->dim.first)++;
 	}
+
 }
 
 
@@ -57,47 +68,44 @@ int main(int argc, char* argv[])
 	QStringList fileList; //a list of the two matrices
 	fileList = argumentParse(argc, argv);
 
-	QFile file1(fileList[0]);
-	QFile file2(fileList[1]);
+	matrix matrix1;
+	matrix matrix2;
+	matrix1.fileName = fileList[0];
+	matrix2.fileName = fileList[1];
 
-	if(!file1.open(QIODevice::ReadOnly | QIODevice::Text))
-	{
-		qout << "You did not enter a valid file." << endl;
-		exit(0);
-	}
-	if(!file2.open(QIODevice::ReadOnly | QIODevice::Text))
-	{
-		qout << "You did not enter a valid file." << endl;
-		exit(0);
-	}
+	qout << matrix1.fileName << endl;
 
-
-	QList<QList<double> > matrix1;
-	QList<QList<double> > matrix2;
-	QPair<int, int> mDim_1; //m rows, n columns
-	QPair<int, int> mDim_2; //m rows, n columns
-	mDim_1.first = 0;
-	mDim_1.second = 0;
-	mDim_2.first = 0;
-	mDim_2.second = 0;
-
-	QTextStream matrixStream1(&file1);
-	QTextStream matrixStream2(&file2);
-
-	QRegExp rx("(\\s|\\t)");
+	struct matrix *matrix1ptr = &matrix1;
+	struct matrix *matrix2ptr = &matrix2;
+	pthread_t thread_tid[2];
+	pthread_create(&thread_tid[0], NULL, readData, (void*) matrix1ptr);
+	pthread_create(&thread_tid[1], NULL, readData, (void*) matrix2ptr);
+	pthread_join(thread_tid[0],NULL);
+	pthread_join(thread_tid[1], NULL);
 
 	
 
-	for(int i = 0; i < mDim_1.first; i++)
+	for(int i = 0; i < matrix1.dim.first; i++)
 	{
-		for(int j = 0; j < mDim_1.second; j++)
+		for(int j = 0; j < matrix1.dim.second; j++)
 		{
-			qout << matrix1[i][j]<< "\t";
+			qout << matrix1.matrix[i][j]<< "\t";
 		}
 		qout << endl;
 	}
 
-	qout << mDim_1.first << "x" << mDim_1.second << endl;
+	qout << endl;
+
+	for(int i = 0; i < matrix2.dim.first; i++)
+	{
+		for(int j = 0; j < matrix2.dim.second; j++)
+		{
+			qout << matrix2.matrix[i][j]<< "\t";
+		}
+		qout << endl;
+	}
+
+	qout << matrix1.dim.first << "x" << matrix1.dim.second << endl;
 
 	//QVarLengthArray<
 
