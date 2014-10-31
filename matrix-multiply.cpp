@@ -21,6 +21,7 @@ struct matrix {
 QStringList argumentParse(int argc, char *argv[]);
 
 void* readData(void *arg);
+void* multiplyMatrix(void *arg);
 
 int main(int argc, char* argv[])
 {
@@ -46,10 +47,19 @@ int main(int argc, char* argv[])
 	outputMatrix.second = matrix2.dim.second;
 
 	pthread_t matrixThread[outputMatrix.first*outputMatrix.second];
+	pthread_attr_t attr;
+
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 	for(int i = 0; i < outputMatrix.first*outputMatrix.second; i++)
 	{
-		
+		pthread_create(&matrixThread[i], NULL, multiplyMatrix, (void *)i);
+	}
+
+	for(int i = 0; i < outputMatrix.first*outputMatrix.second; i++)
+	{
+		pthread_join(matrixThread[i], NULL);
 	}
 	for(int i = 0; i < matrix1.dim.first; i++)
 	{
@@ -70,7 +80,7 @@ int main(int argc, char* argv[])
     }
 
 	qout << matrix1.dim.first << "x" << matrix1.dim.second << endl;
-
+pthread_exit(NULL);
 
 }
 
@@ -100,6 +110,11 @@ void* readData(void *arg)
 		(myMatrix->dim.first)++;
 	}
 
+}
+
+void* multiplyMatrix(void *arg){
+	long position = (long)arg;
+	qout << position << endl;
 }
 
 QStringList argumentParse(int argc, char *argv[])
