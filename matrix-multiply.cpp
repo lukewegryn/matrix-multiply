@@ -1,11 +1,11 @@
 #include "argumentlist.h"
 #include <QFile>
 #include <QTextStream>
-#include "QStream.h"
 #include <QList>
 #include <QVector>
 #include <QPair>
 #include <pthread.h>
+#include <QStreamThreaded.h>
 
 struct matrix {
     QList<QList<double> > matrix;
@@ -55,7 +55,6 @@ int main(int argc, char* argv[])
 
 	//pthread_attr_init(&attr);
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
 	for(int i = 0; i < outputMatrix.first*outputMatrix.second; i++)
 	{
 		int rc = pthread_create(&matrixThread[i], NULL, multiplyMatrix, (void*)i);
@@ -121,8 +120,8 @@ void* readData(void *arg)
 }
 
 void* multiplyMatrix(void *arg){
-	//long position = (long)arg;
-	//qout << position << endl;
+	long position = (long)arg;
+	QOUT(position << endl);
 }
 
 QStringList argumentParse(int argc, char *argv[])
