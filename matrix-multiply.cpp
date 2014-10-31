@@ -55,6 +55,14 @@ int main(int argc, char* argv[])
 
 	//pthread_attr_init(&attr);
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	for(int i = 0; i < matrix1.dim.first; i++)
+	{
+		QList<double> list;
+		outputArray.append(list);
+		for(int j = 0; j < matrix2.dim.second; j++)
+			outputArray[i].append(0.0);
+	}
+
 	for(int i = 0; i < outputMatrix.first*outputMatrix.second; i++)
 	{
 		int rc = pthread_create(&matrixThread[i], NULL, multiplyMatrix, (void*)i);
@@ -68,14 +76,7 @@ int main(int argc, char* argv[])
 	{
 		pthread_join(matrixThread[i], NULL);
 	}
-	for(int i = 0; i < matrix1.dim.first; i++)
-	{
-		QList<double> list;
-		outputArray.append(list);
-		for(int j = 0; j < matrix2.dim.second; j++)
-			outputArray[i].append(0.0);
-	}
-	for (int row = 0; row < outputMatrix.first; row++) {
+	/*for (int row = 0; row < outputMatrix.first; row++) {
         for (int col = 0; col < outputMatrix.second; col++) {
             // Multiply the row of A by the column of B to get the row, column of product.
             for (int inner = 0; inner < matrix1.dim.second; inner++) {
@@ -84,7 +85,9 @@ int main(int argc, char* argv[])
             qout << outputArray[row][col] << "\t";
         }
         qout << endl;
-    }
+    }*/
+
+    
 
 	qout << matrix1.dim.first << "x" << matrix1.dim.second << endl;
 pthread_exit(NULL);
@@ -121,7 +124,18 @@ void* readData(void *arg)
 
 void* multiplyMatrix(void *arg){
 	long position = (long)arg;
-	QOUT(position << endl);
+	int width = matrix2.dim.second;
+	int column = position%(width); //output column index, matrix 2 column
+	int row = position/(width); //output row index, matrix 1 row
+	//QOUT("Thread:" << position << "\t" << "x: " << x << "\t" << "y: " << y << endl);
+	//outputArray[x][y] = (y row of A)*(x column of B)
+	outputArray[row][column] = 0;
+	for(int i = 0; i < matrix1.dim.second; i++)
+	{
+		outputArray[row][column] += matrix1.matrix[row][i]*matrix2.matrix[i][column];
+		//QOUT(i);
+	}
+
 }
 
 QStringList argumentParse(int argc, char *argv[])
