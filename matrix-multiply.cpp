@@ -87,9 +87,17 @@ int main(int argc, char* argv[])
         qout << endl;
     }*/
 
-    
 
-	qout << matrix1.dim.first << "x" << matrix1.dim.second << endl;
+    for(int i = 0; i < outputArray.size(); i++)
+    {
+    	for(int j = 0; j < outputArray[i].size(); j++)
+    	{
+    		qout << outputArray[i][j] << "\t";
+    	}
+    	qout << endl;
+    }
+
+	//qout << matrix1.dim.first << "x" << matrix1.dim.second << endl;
 pthread_exit(NULL);
 
 }
