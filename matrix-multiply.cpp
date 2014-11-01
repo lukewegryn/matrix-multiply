@@ -1,3 +1,22 @@
+/*
+*	Luke Wegryn
+*	Homework5
+*	
+*	The only mechanisms I had to use were creating and joining threads.
+*	Mutexes were not necessary because the threads were only reading values
+*	from the arrays and then writing to a specific element in the output array.
+*	Since there was never a time when two variables would try to change the same
+*	location in memory at the same time I didn't need to make the variables inaccessible
+*	to any processes. I did use synchronization to ensure that the threads that read in
+*	the input arrays were both finished before moving on with the program. This 
+*	ensured that I had all of the values I needed before I started doing any arithmatic.
+*	I also joined all of my threads that did the matrix multiplication arithmatic before
+*	writing anything out to a file. This ensured that all of the calculations had been 
+*	completed before I tried to write anything to an output file. 
+*
+*
+*/
+
 #include "argumentlist.h"
 #include <QFile>
 #include <QTextStream>
@@ -26,6 +45,7 @@ QStringList argumentParse(int argc, char *argv[]);
 void* readData(void *arg);
 void* multiplyMatrix(void *arg);
 bool isValidFloat(QString value);
+bool isValidInt(QString value);
 
 int main(int argc, char* argv[])
 {
@@ -36,8 +56,7 @@ int main(int argc, char* argv[])
 
 	matrix1.fileName = fileList[0];
 	matrix2.fileName = fileList[1];
-
-	qout << matrix1.fileName << endl;
+	QString outputFile = fileList[2];
 
 	struct matrix *matrix1ptr = &matrix1;
 	struct matrix *matrix2ptr = &matrix2;
@@ -47,14 +66,23 @@ int main(int argc, char* argv[])
 	pthread_join(thread_tid[0],NULL);
 	pthread_join(thread_tid[1], NULL);
 
+	if((matrix1.isDecimal && matrix2.isInt) || (matrix1.isInt && matrix2.isDecimal))
+	{
+		qout << "You entered a mix of decimal and integer values." << endl << "Please edit the files and try again." << endl;
+		exit(-1);
+	}
+
+	if(matrix1.dim.second != matrix2.dim.first)
+	{
+		qout << "You entered invalid intermatrix dimensions." << endl;
+		exit(-1); 
+	}
+
 	outputMatrix.first = matrix1.dim.first;
 	outputMatrix.second = matrix2.dim.second;
 
 	pthread_t matrixThread[outputMatrix.first*outputMatrix.second];
-	//pthread_attr_t attr;
 
-	//pthread_attr_init(&attr);
-	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	for(int i = 0; i < matrix1.dim.first; i++)
 	{
 		QList<double> list;
@@ -77,14 +105,23 @@ int main(int argc, char* argv[])
 		pthread_join(matrixThread[i], NULL);
 	}
 
-
+	QFile outFile(outputFile);
+	outFile.open(QFile::WriteOnly|QFile::Text);
+	QTextStream outStream(&outFile);
+	outStream.setRealNumberNotation(QTextStream::SmartNotation);
     for(int i = 0; i < outputArray.size(); i++)
     {
     	for(int j = 0; j < outputArray[i].size(); j++)
     	{
-    		qout << outputArray[i][j] << "\t";
+    		//if (matrix1.isInt)
+    			outStream << outputArray[i][j] << "\t";
+    		/*else
+    		{
+    			outStream.setRealNumberPrecision(4);
+    			outStream  << outputArray[i][j] << "\t";
+    		}*/
     	}
-    	qout << endl;
+    	outStream << endl;
     }
 pthread_exit(NULL);
 
@@ -92,11 +129,7 @@ pthread_exit(NULL);
 
 void* readData(void *arg)
 {
-	QString myString = "1.0001";
-	if(isValidFloat(myString))
-	{
-		QOUT("Valid");
-	}
+
 	QRegExp rx("(\\s|\\s+|\\t)");
 	struct matrix *myMatrix = (struct matrix*)arg;
 	QFile file(myMatrix->fileName);
@@ -113,6 +146,16 @@ void* readData(void *arg)
 		QList<double> column;
 		for(int i = 0; i < tempList.size(); i++)
 		{
+			if(isValidInt(tempList[i]))
+			{
+				myMatrix->isInt = true;
+			}
+
+			if(isValidFloat(tempList[i]))
+			{
+				myMatrix->isDecimal = true;
+			}
+
 			column.append(tempList[i].toDouble());
 		}
 
@@ -120,6 +163,14 @@ void* readData(void *arg)
 		myMatrix->dim.second = tempList.size();
 		(myMatrix->dim.first)++;
 	}
+
+	if(myMatrix->isInt && myMatrix->isDecimal)
+	{
+		QOUT("You entered a mix of decimal and integer values." << endl << "Please edit the files and try again." << endl);
+		exit(0);
+	}
+
+	return 0;
 
 }
 
@@ -134,6 +185,8 @@ void* multiplyMatrix(void *arg){
 		outputArray[row][column] += matrix1.matrix[row][i]*matrix2.matrix[i][column];
 	}
 
+	return 0;
+
 }
 
 QStringList argumentParse(int argc, char *argv[])
@@ -141,10 +194,10 @@ QStringList argumentParse(int argc, char *argv[])
 	ArgumentList al(argc, argv);
 	al.takeFirst();
 	QStringList argumentList;
-	int i = 0;
+	//int i = 0;
 	if(al.isEmpty())
 	{
-		qout << "You need to supply two valid files." << endl;
+		qout << "You need to supply two valid input files." << endl;
 		exit(0);
 	}
 	else
@@ -153,6 +206,11 @@ QStringList argumentParse(int argc, char *argv[])
 		{
 			argumentList.append(al.takeFirst());
 		}	
+	}
+	if(argumentList.size() != 3)
+	{
+		qout << "You entered an incorrect number of arguments." << endl;
+		exit(0);
 	}
 	return argumentList;
 }
@@ -181,7 +239,17 @@ bool isValidFloat(QString value)
 	return isValid;
 }
 
-bool isValidInt(int value)
+bool isValidInt(QString value)
 {
-	
+	bool isValid = false;
+	QIntValidator *intValidate = new QIntValidator();
+	int r = 0;
+	int isInt = intValidate->validate(value, r);
+
+	if(isInt == 2)
+	{
+		isValid = true;
+	}
+
+	return isValid;
 }
